@@ -18,12 +18,10 @@
 #ifndef _DURATION_H_
 #define _DURATION_H_
 
-// HACKS TERRITORY
-#if __has_include(<__msvc_chrono.hpp>)
-#include <__msvc_chrono.hpp> // skip all the formatting/istream/locale/mutex bloat
-#else
+// __msvc_chrono.hpp used to be a lightweight alternative to <chrono> on MSVC, but newer
+// MSVC versions (19.50+) moved the chrono literals out of it, which broke every
+// "10min"/"500ms" user defined literal in the codebase.
 #include <chrono>
-#endif
 
 /// Milliseconds shorthand typedef.
 typedef std::chrono::milliseconds Milliseconds;
