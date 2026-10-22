@@ -1,13 +1,13 @@
 DELIMITER ;;
 CREATE PROCEDURE 2024_05_18_01_areatrigger_spellvisual() BEGIN
-  IF NOT EXISTS (SELECT * FROM `information_schema`.`columns` WHERE `table_schema`=SCHEMA() AND `table_name`='areatrigger_create_properties' AND `column_name`='SpellsForVisuals') THEN
-    
+  IF EXISTS (SELECT * FROM `information_schema`.`columns` WHERE `table_schema`=SCHEMA() AND `table_name`='areatrigger' AND `column_name`='SpellForVisuals') THEN
     ALTER TABLE `areatrigger`
         DROP COLUMN `SpellForVisuals`;
+  END IF;
 
+  IF NOT EXISTS (SELECT * FROM `information_schema`.`columns` WHERE `table_schema`=SCHEMA() AND `table_name`='areatrigger_create_properties' AND `column_name`='SpellForVisuals') THEN
     ALTER TABLE `areatrigger_create_properties`
         ADD COLUMN `SpellForVisuals` INT AFTER `DecalPropertiesId`;
-
   END IF;
 END;;
 
