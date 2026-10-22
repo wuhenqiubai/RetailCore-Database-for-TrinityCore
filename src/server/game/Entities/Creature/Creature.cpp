@@ -2143,6 +2143,12 @@ float Creature::GetAttackDistance(Unit const* player) const
     int32 creatureLevel = GetLevelForTarget(player);
     int32 levelDifference = creatureLevel - playerLevel;
 
+    // `creature_template`.`RequiredExpansion` is still EXPANSION_CLASSIC for the vast majority of rows,
+    // and the classic Chromie Time cap is only level 30. Using it as the cap would push the aggro radius
+    // of every creature above level 30 down to the 5 yard minimum, so never cap below the realm's max
+    // player level. Creatures above that level keep the maxlevel treatment described below.
+    expansionMaxLevel = std::max(expansionMaxLevel, int32(sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)));
+
     // The aggro radius for creatures with equal level as the player is 20 yards.
     // The combatreach should not get taken into account for the distance so we drop it from the range (see Supremus as expample)
     float baseAggroDistance = 20.0f - GetCombatReach();
