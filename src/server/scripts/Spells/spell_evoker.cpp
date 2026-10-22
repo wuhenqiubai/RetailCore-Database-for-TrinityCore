@@ -47,6 +47,7 @@ enum EvokerSpells
     SPELL_EVOKER_BLESSING_OF_THE_BRONZE_WARLOCK = 381757,
     SPELL_EVOKER_BLESSING_OF_THE_BRONZE_WARRIOR = 381758,
     SPELL_EVOKER_ENERGIZING_FLAME               = 400006,
+    SPELL_EVOKER_ETERNITY_SURGE_DAMAGE          = 359077,
     SPELL_EVOKER_FIRE_BREATH_DAMAGE             = 357209,
     SPELL_EVOKER_GLIDE_KNOCKBACK                = 358736,
     SPELL_EVOKER_HOVER                          = 358267,
@@ -142,6 +143,60 @@ class spell_evo_charged_blast : public AuraScript
     void Register() override
     {
         DoCheckProc += AuraCheckProcFn(spell_evo_charged_blast::CheckProc);
+    }
+};
+
+// 359073 - Eternity Surge (Blue)
+class spell_evo_eternity_surge : public SpellScript
+{
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_EVOKER_ETERNITY_SURGE_DAMAGE });
+    }
+
+    void OnComplete(int32 completedStageCount) const
+    {
+        Unit* target = GetExplTargetUnit();
+        if (!target)
+            return;
+
+        // every empower level adds one more target, each of them takes the full damage
+        int32 empowerLevel = std::max(completedStageCount + 1, 1);
+
+        GetCaster()->CastSpell(target, SPELL_EVOKER_ETERNITY_SURGE_DAMAGE, CastSpellExtraArgs()
+            .SetTriggeringSpell(GetSpell())
+            .SetTriggerFlags(TRIGGERED_IGNORE_CAST_IN_PROGRESS | TRIGGERED_DONT_REPORT_CAST_ERROR)
+            .AddSpellMod(SPELLVALUE_MAX_TARGETS, empowerLevel));
+    }
+
+    void Register() override
+    {
+        OnEmpowerCompleted += SpellOnEmpowerStageCompletedFn(spell_evo_eternity_surge::OnComplete);
+    }
+};
+
+// 359077 - Eternity Surge (Blue)
+class spell_evo_eternity_surge_damage : public SpellScript
+{
+    void FilterTargets(std::list<WorldObject*>& targets) const
+    {
+        Unit* explTarget = GetExplTargetUnit();
+        if (!explTarget)
+            return;
+
+        uint32 maxTargets = GetSpellValue()->MaxAffectedTargets;
+        if (!maxTargets)
+            return;
+
+        // the primary target is always hit, remaining empower levels are spent on random enemies in range
+        targets.remove(explTarget);
+        Trinity::Containers::RandomResize(targets, maxTargets - 1);
+        targets.push_back(explTarget);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_evo_eternity_surge_damage::FilterTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ENEMY);
     }
 };
 
@@ -327,7 +382,16 @@ class spell_evo_pyre : public SpellScript
 
     void HandleDamage(SpellEffIndex /*effIndex*/)
     {
-        GetCaster()->CastSpell(GetHitUnit()->GetPosition(), SPELL_EVOKER_PYRE_DAMAGE, true);
+        Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
+
+        // Pyre Damage (357212) resolves its area through TARGET_DEST_DEST, which silently falls
+        // back to the caster's own position when no destination is supplied. Without a valid
+        // hostile victim the explosion would therefore be centered on (and damage) the evoker.
+        if (!target || !caster->IsValidAttackTarget(target))
+            return;
+
+        caster->CastSpell(target->GetPosition(), SPELL_EVOKER_PYRE_DAMAGE, true);
     }
 
     void Register() override
@@ -368,6 +432,8 @@ void AddSC_evoker_spell_scripts()
     RegisterSpellScript(spell_evo_azure_strike);
     RegisterSpellScript(spell_evo_blessing_of_the_bronze);
     RegisterSpellScript(spell_evo_charged_blast);
+    RegisterSpellScript(spell_evo_eternity_surge);
+    RegisterSpellScript(spell_evo_eternity_surge_damage);
     RegisterSpellScript(spell_evo_fire_breath);
     RegisterSpellScript(spell_evo_fire_breath_damage);
     RegisterSpellScript(spell_evo_glide);
