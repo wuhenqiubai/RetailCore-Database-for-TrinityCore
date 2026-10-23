@@ -1,0 +1,22 @@
+-- Remove a stale `area_table` override.
+--
+-- The `hotfixes` database is not a full copy of the client DB2 data - it only carries
+-- overrides and additions that the server applies on top of the client files
+-- (DB2DatabaseLoader::Load() overwrites the matching index slot when the id already exists
+-- in the client DB2, and appends it otherwise).
+--
+-- The only row this database had was ID 13643 with `VerifiedBuild` = 0, i.e. it was loaded
+-- through the "custom" pass and therefore replaced the client entry. In the 10.2.7 client
+-- AreaTable.db2, 13643 is "The Great Sea" (continent 2444, zone DragonIslesTheGreatSea).
+-- The row overwrote it with the Emerald Dream data (ZoneName '102Tree', AreaName
+-- 'Emerald Dream', AreaBit 12727), which is wrong on both counts:
+--   * the real Emerald Dream area is 14529 (continent 2548, ContentTuningID 2699), and it is
+--     what the world database already uses - 43 `phase_area` rows and all spawns point at it
+--   * The Great Sea itself lost its name, mount flags and battle pet level range
+--
+-- Rebuilding the whole table is not desirable: the official TrinityCore hotfixes dump
+-- (TDB_full_hotfixes_1027.24051) ships `area_table` and `area_table_locale` completely empty,
+-- which confirms that area data is meant to come from the client DB2 alone. Duplicating the
+-- 8824 client areas into the database would only create another source of truth to drift.
+
+DELETE FROM `area_table` WHERE `ID` = 13643 AND `VerifiedBuild` = 0;
