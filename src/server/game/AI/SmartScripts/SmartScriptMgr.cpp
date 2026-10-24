@@ -73,6 +73,7 @@ void SmartAIMgr::LoadSmartAIFromDB()
     }
 
     uint32 count = 0;
+    uint32 skippedQuestCount = 0;
 
     do
     {
@@ -151,7 +152,10 @@ void SmartAIMgr::LoadSmartAIFromDB()
                 {
                     if (!sObjectMgr->GetQuestTemplate((uint32)temp.entryOrGuid))
                     {
-                        TC_LOG_ERROR("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Quest entry ({}) does not exist, skipped loading.", uint32(temp.entryOrGuid));
+                        // Known data gap: quest_template lost rows while quest_template_addon / smart_scripts kept theirs.
+                        // Keep the scripts, but do not flood the error log with one line per orphaned row.
+                        ++skippedQuestCount;
+                        TC_LOG_DEBUG("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Quest entry ({}) does not exist, skipped loading.", uint32(temp.entryOrGuid));
                         continue;
                     }
                     break;
@@ -373,6 +377,8 @@ void SmartAIMgr::LoadSmartAIFromDB()
     while (result->NextRow());
 
     // Post Loading Validation
+    uint32 brokenLinkCount = 0;
+    uint32 missingLinkSourceCount = 0;
     for (SmartAIEventMap& eventmap : mEventMap)
     {
         for (std::pair<int64 const, SmartAIEventList>& eventlistpair : eventmap)
@@ -383,7 +389,8 @@ void SmartAIMgr::LoadSmartAIFromDB()
                 {
                     if (!FindLinkedEvent(eventlistpair.second, e.link))
                     {
-                        TC_LOG_ERROR("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Entry {} SourceType {}, Event {}, Link Event {} not found or invalid.",
+                        ++brokenLinkCount;
+                        TC_LOG_DEBUG("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Entry {} SourceType {}, Event {}, Link Event {} not found or invalid.",
                             e.entryOrGuid, e.GetScriptType(), e.event_id, e.link);
                     }
                 }
@@ -392,13 +399,20 @@ void SmartAIMgr::LoadSmartAIFromDB()
                 {
                     if (!FindLinkedSourceEvent(eventlistpair.second, e.event_id))
                     {
-                        TC_LOG_ERROR("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Entry {} SourceType {}, Event {}, Link Source Event not found or invalid. Event will never trigger.",
+                        ++missingLinkSourceCount;
+                        TC_LOG_DEBUG("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: Entry {} SourceType {}, Event {}, Link Source Event not found or invalid. Event will never trigger.",
                             e.entryOrGuid, e.GetScriptType(), e.event_id);
                     }
                 }
             }
         }
     }
+
+    if (skippedQuestCount)
+        TC_LOG_WARN("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: {} script rows skipped because their quest template does not exist (set Logger.sql.sql to Debug to list them).", skippedQuestCount);
+
+    if (brokenLinkCount || missingLinkSourceCount)
+        TC_LOG_WARN("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: {} script rows link to a missing Link Event and {} link source events can never trigger (set Logger.sql.sql to Debug to list them).", brokenLinkCount, missingLinkSourceCount);
 
     TC_LOG_INFO("server.loading", ">> Loaded {} SmartAI scripts in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 

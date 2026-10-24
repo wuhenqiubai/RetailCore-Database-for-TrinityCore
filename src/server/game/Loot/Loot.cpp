@@ -767,7 +767,9 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
     if (!tab)
     {
         if (!noEmptyError)
-            TC_LOG_ERROR("sql.sql", "Table '{}' loot id #{} used but it doesn't have records.", store.GetName(), lootId);
+            // Hundreds of thousands of loot ids ship without a matching template row (mostly creature_template_difficulty
+            // LootID values that were never populated). This is a data gap, not a runtime fault: log it at Debug.
+            TC_LOG_DEBUG("sql.sql", "Table '{}' loot id #{} used but it doesn't have records.", store.GetName(), lootId);
         return false;
     }
 
