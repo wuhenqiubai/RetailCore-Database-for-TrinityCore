@@ -497,8 +497,11 @@ LogDB.Opt.ClearTime = 1209600
 #        Description: Time (in seconds) before the server is forced to crash if it is frozen.
 #        Default:     60 - (Enabled, Recommended 10+)
 #                      0 - (Disabled)
+#        Note:        Debug builds can spend more than 60 seconds inside a single world tick
+#                     (map/vmap loading, first login of a character). Keep this at 0 when
+#                     running a Debug build, otherwise the watchdog aborts the server.
 
-MaxCoreStuckTime = 60
+MaxCoreStuckTime = 0
 
 #
 #    AddonChannel
