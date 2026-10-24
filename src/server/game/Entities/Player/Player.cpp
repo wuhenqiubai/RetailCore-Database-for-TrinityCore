@@ -26679,6 +26679,12 @@ void Player::_LoadSkills(PreparedQueryResult result)
 
         // enable parent skill line if missing
         SkillLineEntry const* skillEntry = sSkillLineStore.LookupEntry(skillId);
+        if (!skillEntry)
+        {
+            TC_LOG_ERROR("entities.player.loading", "Player::_LoadSkills: Player ({}) has invalid skill {} in `character_skills`, ignoring.", GetGUID().ToString(), skillId);
+            continue;
+        }
+
         if (skillEntry->ParentSkillLineID && skillEntry->ParentTierIndex > 0 && GetSkillStep(skillEntry->ParentSkillLineID) < skillEntry->ParentTierIndex)
             if (SkillRaceClassInfoEntry const* rcEntry = sDB2Manager.GetSkillRaceClassInfo(skillEntry->ParentSkillLineID, GetRace(), GetClass()))
                 if (SkillTiersEntry const* tier = sObjectMgr->GetSkillTier(rcEntry->SkillTierID))
