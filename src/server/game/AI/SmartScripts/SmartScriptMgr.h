@@ -1730,6 +1730,10 @@ class TC_GAME_API SmartAIMgr
         //event stores
         SmartAIEventMap mEventMap[SMART_SCRIPT_TYPE_MAX];
 
+        // Rows dropped because their quest objective is missing from quest_objectives; counted so a
+        // single summary line can be logged instead of one error line per row.
+        uint32 m_invalidObjectiveCount = 0;
+
         static bool EventHasInvoker(SMART_EVENT event);
 
         bool IsEventValid(SmartScriptHolder& e);

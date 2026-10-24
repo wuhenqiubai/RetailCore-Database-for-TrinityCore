@@ -97,6 +97,10 @@ class TC_GAME_API LootStore
         LootTemplateMap m_LootTemplates;
         char const* m_name;
         char const* m_entryName;
+        // Aggregate counters for the data gaps reported while loading, so that one summary line
+        // can replace tens of thousands of per-entry error lines.
+        mutable uint32 m_missingIdCount = 0;
+        mutable uint32 m_unusedIdCount = 0;
         bool m_ratesAllowed;
 };
 

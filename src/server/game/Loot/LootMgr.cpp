@@ -256,17 +256,28 @@ void LootStore::ReportUnusedIds(LootIdSet const& lootIdSet) const
 {
     // all still listed ids isn't referenced
     for (LootIdSet::const_iterator itr = lootIdSet.begin(); itr != lootIdSet.end(); ++itr)
-        TC_LOG_ERROR("sql.sql", "Table '{}' Entry {} isn't {} and not referenced from loot, and thus useless.", GetName(), *itr, GetEntryName());
+    {
+        ++m_unusedIdCount;
+        TC_LOG_DEBUG("sql.sql", "Table '{}' Entry {} isn't {} and not referenced from loot, and thus useless.", GetName(), *itr, GetEntryName());
+    }
+
+    if (m_missingIdCount || m_unusedIdCount)
+        TC_LOG_WARN("sql.sql", "Table '{}': {} entries referenced by game data have no loot definition and {} definitions are never referenced (set Logger.sql.sql to Debug to list them).", GetName(), m_missingIdCount, m_unusedIdCount);
+
+    m_missingIdCount = 0;
+    m_unusedIdCount = 0;
 }
 
 void LootStore::ReportNonExistingId(uint32 lootId) const
 {
-    TC_LOG_ERROR("sql.sql", "Table '{}' Entry {} does not exist", GetName(), lootId);
+    ++m_missingIdCount;
+    TC_LOG_DEBUG("sql.sql", "Table '{}' Entry {} does not exist", GetName(), lootId);
 }
 
 void LootStore::ReportNonExistingId(uint32 lootId, char const* ownerType, uint32 ownerId) const
 {
-    TC_LOG_ERROR("sql.sql", "Table '{}' Entry {} does not exist but it is used by {} {}", GetName(), lootId, ownerType, ownerId);
+    ++m_missingIdCount;
+    TC_LOG_DEBUG("sql.sql", "Table '{}' Entry {} does not exist but it is used by {} {}", GetName(), lootId, ownerType, ownerId);
 }
 
 //

@@ -74,6 +74,7 @@ void SmartAIMgr::LoadSmartAIFromDB()
 
     uint32 count = 0;
     uint32 skippedQuestCount = 0;
+    m_invalidObjectiveCount = 0;
 
     do
     {
@@ -413,6 +414,9 @@ void SmartAIMgr::LoadSmartAIFromDB()
 
     if (brokenLinkCount || missingLinkSourceCount)
         TC_LOG_WARN("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: {} script rows link to a missing Link Event and {} link source events can never trigger (set Logger.sql.sql to Debug to list them).", brokenLinkCount, missingLinkSourceCount);
+
+    if (m_invalidObjectiveCount)
+        TC_LOG_WARN("sql.sql", "SmartAIMgr::LoadSmartAIFromDB: {} script rows were skipped because their quest objective does not exist (set Logger.sql.sql to Debug to list them).", m_invalidObjectiveCount);
 
     TC_LOG_INFO("server.loading", ">> Loaded {} SmartAI scripts in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 
@@ -1526,7 +1530,9 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             case SMART_EVENT_QUEST_OBJ_COMPLETION:
                 if (!sObjectMgr->GetQuestObjective(e.event.questObjective.id))
                 {
-                    TC_LOG_ERROR("sql.sql", "SmartAIMgr: Event SMART_EVENT_QUEST_OBJ_COMPLETION using invalid objective id {}, skipped.", e.event.questObjective.id);
+                    // Same data gap as the orphaned quest scripts: the objective row is gone.
+                    ++m_invalidObjectiveCount;
+                    TC_LOG_DEBUG("sql.sql", "SmartAIMgr: Event SMART_EVENT_QUEST_OBJ_COMPLETION using invalid objective id {}, skipped.", e.event.questObjective.id);
                     return false;
                 }
                 break;
